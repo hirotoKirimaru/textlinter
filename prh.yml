@@ -13,6 +13,7 @@ imports:
   - ./prh-rules/languages/ja/typo.yml
   - ./prh-rules/terms/software.yml
   - ./prh-rules/terms/trademark.yml
+  - ./prh-rules/terms/kirimaru.yml
   - ./prh-rules/media/techbooster.yml
   - ./prh-rules/media/WEB+DB_PRESS.yml
 

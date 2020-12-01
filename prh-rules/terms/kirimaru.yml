@@ -1,0 +1,13 @@
+# Rules for Kirimaru
+meta:
+  reviewer:
+    - kirimaru
+  rules:   https://github.com/prh/rules
+
+version: 1
+rules:
+  - expected: Gitpod
+    pattern:  gitpod
+    prh: Gitpodが正しいです
+  - expected: HTTPie
+    pattern:  httpie
