@@ -11,3 +11,9 @@ rules:
     prh: Gitpodが正しいです
   - expected: HTTPie
     pattern:  httpie
+  - expected: IntelliJ IDEA
+    pattern:  Intellij IDEA
+  - expected: NetBeans
+    pattern:  Net Beans
+  - expected: VS Code
+    pattern: VSCode
