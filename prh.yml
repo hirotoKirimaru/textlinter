@@ -87,11 +87,11 @@ rules:
         to:   日経ソフトウエア
 
   # 長音の統一には否定後読みを活用する そうしないと サーバー が サーバーー にされてしまったりする
-  - expected: サーバー
-    pattern:  /サーバ(?!ー)/
-    specs:
-      - from: サーバ
-        to:   サーバー
+  # - expected: サーバー
+  #   pattern:  /サーバ(?!ー)/
+  #   specs:
+  #     - from: サーバ
+  #       to:   サーバー
 
   # 単語境界の区別
   - expected: js
