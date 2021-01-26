@@ -17,6 +17,6 @@ rules:
     pattern:  Net Beans
   - expected: VS Code
     pattern: VSCode
-  - expected: CheckStyle
-    pattern: Checkstyle
+  - expected: Checkstyle
+    pattern: CheckStyle
     prh: Sは小文字が正しいです
