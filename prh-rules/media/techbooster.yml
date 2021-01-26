@@ -348,8 +348,8 @@ rules:
     pattern:  しくみ
   - expected: そう
     pattern:  沿う
-  - expected: そって
-    pattern:  沿って
+  # - expected: そって
+    # pattern:  沿って
   #- expected: Firebase
   #  pattern:  Firebas
   # その他
