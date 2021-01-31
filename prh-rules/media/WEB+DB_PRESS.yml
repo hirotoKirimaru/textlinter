@@ -209,13 +209,13 @@ rules:
       - ただ1つ
       - 唯1つ
       - 唯一つ
-    expected: ただ一つ
-  - pattern: もう1度
-    expected: もう一度
-  - pattern: もう1つ
-    expected: もう一つ
-  - pattern: 1つは
-    expected: 一つは
+    expected: ただ1つ
+  - pattern: もう一度
+    expected: もう1度
+  - pattern: もう一つ
+    expected: もう1つ
+  - pattern: 一つは
+    expected: 1つは
   - pattern: 一目了然
     expected: 一目瞭然
   - pattern: いちがいに
