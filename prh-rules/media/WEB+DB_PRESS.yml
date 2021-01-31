@@ -231,18 +231,18 @@ rules:
       - ひと通り
       - 一とおり
     expected: 一通り
-  - pattern: 1度
-    expected: 一度
-  - pattern: 1部
-    expected: 一部
-  - pattern: 1文
-    expected: 一文
-  - pattern: 1例
-    expected: 一例
-  - pattern: 2重
-    expected: 二重
-  - pattern: 3重
-    expected: 三重
+  - pattern: 一度
+    expected: 1度
+  - pattern: 一部
+    expected: 1部
+  - pattern: 一文
+    expected: 1文
+  - pattern: 一例
+    expected: 1例
+  - pattern: 二重
+    expected: 2重
+  - pattern: 三重
+    expected: 3重
   - pattern: /([何数\\d一二三四五六七八九十０-９])箇所/
     expected: $1ヵ所
   - pattern: /([何数\\d一二三四五六七八九十０-９])個所/
