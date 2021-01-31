@@ -346,8 +346,8 @@ rules:
     pattern:  パラメーター
   - expected: 仕組み
     pattern:  しくみ
-  - expected: そう
-    pattern:  沿う
+  # - expected: そう
+  #   pattern:  沿う
   # - expected: そって
     # pattern:  沿って
   #- expected: Firebase
