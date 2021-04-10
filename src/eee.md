@@ -1,54 +1,166 @@
-# ふるさと納税のほたて1kgをもう食べ切ってしまった…
+# JavaでNullPointerException回避をする方法をまとめる
 
-ホタテ美味しかったので、ダイレクトマーケティングする記事。
+今日も小ネタ。
   
+NullPointerExceptionを回避するのは簡単だけど、もうちょっとスマートに書けない？
+  
+ということを纏める記事。
+  
+余談ですが、NullPointerExceptionは「ぬるぽ」とか大文字取って「NPE」とか呼んでます。以後、「NPE」で統一します。
+# 環境
+- Java
+  - 16
 
-# 商品
-オホーツク産ホタテ玉冷大 1kg
+# データ構造
 
-<table border="0" cellpadding="0" cellspacing="0"><tr><td><div style="border:1px solid #95a5a6;border-radius:.75rem;background-color:#FFFFFF;width:504px;margin:0px;padding:5px;text-align:center;overflow:hidden;"><table><tr><td style="width:240px"><a href="https://hb.afl.rakuten.co.jp/ichiba/1ee73951.86f443b2.1ee73952.9e148dd7/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Ff012190-mombetsu%2F10-68%2F&link_type=picttext&ut=eyJwYWdlIjoiaXRlbSIsInR5cGUiOiJwaWN0dGV4dCIsInNpemUiOiIyNDB4MjQwIiwibmFtIjoxLCJuYW1wIjoicmlnaHQiLCJjb20iOjEsImNvbXAiOiJkb3duIiwicHJpY2UiOjEsImJvciI6MSwiY29sIjoxLCJiYnRuIjoxLCJwcm9kIjowLCJhbXAiOmZhbHNlfQ%3D%3D" target="_blank" rel="nofollow sponsored noopener" style="word-wrap:break-word;"  ><img src="https://hbb.afl.rakuten.co.jp/hgb/1ee73951.86f443b2.1ee73952.9e148dd7/?me_id=1362023&item_id=10000000&pc=https%3A%2F%2Fthumbnail.image.rakuten.co.jp%2F%400_mall%2Ff012190-mombetsu%2Fcabinet%2F3%2F10068.jpg%3F_ex%3D240x240&s=240x240&t=picttext" border="0" style="margin:2px" alt="[商品価格に関しましては、リンクが作成された時点と現時点で情報が変更されている場合がございます。]" title="[商品価格に関しましては、リンクが作成された時点と現時点で情報が変更されている場合がございます。]"></a></td><td style="vertical-align:top;width:248px;"><p style="font-size:12px;line-height:1.4em;text-align:left;margin:0px;padding:2px 6px;word-wrap:break-word"><a href="https://hb.afl.rakuten.co.jp/ichiba/1ee73951.86f443b2.1ee73952.9e148dd7/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Ff012190-mombetsu%2F10-68%2F&link_type=picttext&ut=eyJwYWdlIjoiaXRlbSIsInR5cGUiOiJwaWN0dGV4dCIsInNpemUiOiIyNDB4MjQwIiwibmFtIjoxLCJuYW1wIjoicmlnaHQiLCJjb20iOjEsImNvbXAiOiJkb3duIiwicHJpY2UiOjEsImJvciI6MSwiY29sIjoxLCJiYnRuIjoxLCJwcm9kIjowLCJhbXAiOmZhbHNlfQ%3D%3D" target="_blank" rel="nofollow sponsored noopener" style="word-wrap:break-word;"  >【ふるさと納税】10-68 オホーツク産ホタテ玉冷大(1kg)</a><br><span >価格：10000円（税込、送料無料)</span> <span style="color:#BBB">(2021/3/6時点)</span></p><div style="margin:10px;"><a href="https://hb.afl.rakuten.co.jp/ichiba/1ee73951.86f443b2.1ee73952.9e148dd7/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Ff012190-mombetsu%2F10-68%2F&link_type=picttext&ut=eyJwYWdlIjoiaXRlbSIsInR5cGUiOiJwaWN0dGV4dCIsInNpemUiOiIyNDB4MjQwIiwibmFtIjoxLCJuYW1wIjoicmlnaHQiLCJjb20iOjEsImNvbXAiOiJkb3duIiwicHJpY2UiOjEsImJvciI6MSwiY29sIjoxLCJiYnRuIjoxLCJwcm9kIjowLCJhbXAiOmZhbHNlfQ%3D%3D" target="_blank" rel="nofollow sponsored noopener" style="word-wrap:break-word;"  ><img src="https://static.affiliate.rakuten.co.jp/makelink/rl.svg" style="float:left;max-height:27px;width:auto;margin-top:0"></a><a href="https://hb.afl.rakuten.co.jp/ichiba/1ee73951.86f443b2.1ee73952.9e148dd7/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Ff012190-mombetsu%2F10-68%2F%3Fscid%3Daf_pc_bbtn&link_type=picttext&ut=eyJwYWdlIjoiaXRlbSIsInR5cGUiOiJwaWN0dGV4dCIsInNpemUiOiIyNDB4MjQwIiwibmFtIjoxLCJuYW1wIjoicmlnaHQiLCJjb20iOjEsImNvbXAiOiJkb3duIiwicHJpY2UiOjEsImJvciI6MSwiY29sIjoxLCJiYnRuIjoxLCJwcm9kIjowLCJhbXAiOmZhbHNlfQ==" target="_blank" rel="nofollow sponsored noopener" style="word-wrap:break-word;"  ><div style="float:right;width:41%;height:27px;background-color:#bf0000;color:#fff!important;font-size:12px;font-weight:500;line-height:27px;margin-left:1px;padding: 0 12px;border-radius:16px;cursor:pointer;text-align:center;">楽天で購入</div></a></div></td></tr></table></div><br><p style="color:#000000;font-size:12px;line-height:1.4em;margin:5px;word-wrap:break-word"></p></td></tr></table>
+次のような親子孫関係を持つ。
+  
+リストでのNPE回避も表現したいので、リストも持たせています。
+  
+- Parent
+  - Child
+    - GrandChild
 
-# 注文日
-2021/02/15
+ToDo:201。
+# 一番シンプル
 
-# 到着日
-2021/02/26
+```!= null```で回避するのが一番簡単です。
   
-爆速で届きました。ふるさと納税の経験が薄かったのですが、早くて1ヵ月、在庫が無いと3カ月くらいかかるイメージがあったので、2週間くらいでも届くとはありがたいです。
+```null```は基本型なのでIDEで色分けされて見やすいので、よく使用しています。
   
-海産物系は、冬が旬だから出荷も早いんですかね。
-  
-正直、ふるさと納税って届く日が分からないと、冷蔵庫のスペース管理に困るんですよね。土日に冷凍食品買い込んだり、料理冷凍したりして冷凍庫パンパンな状態で来られても困りますし…。
-  
-早く来るというのはそれだけでメリットです。
-  
-# 値段
-10,000円
-  
-# 感想
+```java
+Parent parent = null;
 
-オススメです。
-  
-刺身とか、焼いて食べたりしましたけど、結局のところ刺身が一番調理簡単ですし、美味しいです。商品ページ見てもらうとわかりますが、1個1個が大きくて、食べ応えがあります。
-  
-ホタテ1個1個が別々に固まっているから、必要な分だけ解凍するのが簡単なのもうれしいです。解凍時の水を吸収するキッチンペーパーと、余計な水分を飛ばさないラップをして、夜寝れば翌日には食べられるようになってます。
-  
-毎日、1食当たり3個食べてたら、気づいたら無くなってました。
-  
-ホタテって大食いするようなものでもないので、小鉢感覚で食べると長く食べられますし、長期的に食べられたことによる満足感も大きいです。
-  
-ぜひ次に当てはまる人は、ホタテを買ってみてください。
+if(parent != null) {
+  // 以後の処理
+}
+```
 
-## オススメする人
+ただし、入れ子が複雑になると、都度null回避をしなければならないので面倒です。
+  
+```java
+if (parent != null ||
+  parent.getChild() != null ||
+  parent.getChild().getGrandChild() != null) {
 
-- ホタテが好きでたまらない人
-- 食卓に1品追加したい人
-- ふるさと納税後にすぐ届けて欲しい人
-    - 冬限定？
+  BigDecimal zero = parent.getChild().getGrandChild().getRate();
+}
+```
+
+
+# Optional型を使用する
+
+Optional型に設定する方法があります。
+
+```java
+Parent parent = null;
+
+Optional.ofNullable(parent)
+  .orElse(null); // もしparentがnullならnullを返却する
+```
+  
+入れ子構造が複雑になっても、中間でNPEが発生しないのでコードが書きやすいです。
+  
+```java
+Optional.ofNullable(parent)
+    .map(Parent::getChild)
+    .map(Child::getGrandChild)
+    .map(GrandChild::getRate)
+    .orElse(BigDecimal.ZERO)
+```
+  
+型変換したい時にもOptional型を使うと、安全にNPE回避できて便利ですね。
+  
+```java
+BigDecimal a = null;
+Optional.ofNullable(a).map(BigDecimal::toPlainString).orElse(null);
+```
+
+
+# Objects型を使用する
+
+```Objects```型に```isNull```と```nonNull```メソッドがあります。
+  
+```java
+Parent parent = null;
+
+if(Objects.nonNull(parent)) {
+  // 以後の処理
+}
+```
+  
+私は単体で扱うことはあまりなく、Stream処理のfilterでNPE回避のためによく使用します。メソッド参照を使用すると、思考コストが減るので便利です。
+  
+```java
+// 親と子はいるが、孫がいないので、NPE回避を導入しないとエラーになる
+ArrayList<Child> baseDetailList = new ArrayList<>();
+baseDetailList.add(Child.builder().build());
+
+Parent parent = Parent.builder()
+  .children(baseDetailList)
+  .build();
+
+assertThat(
+  Optional.ofNullable(parent.getChildren())
+    .stream().flatMap(Collection::stream)
+    .map(Child::getGrandChildren)
+    .filter(Objects::nonNull) // NPE回避用ロジック
+//  .filter(e -> e != null) 一瞬、何がNullではないものかがわからない。  
+//  .filter(e -> e.tax != null) 実はtaxがNull以外かもしれない、という思考になる
+    .flatMap(Collection::stream)
+    .map(GrandChild::getRate)
+    .collect(Collectors.toList())
+).isEmpty();
+```
+
+# どのNPE回避方法がオススメ？
+
+NPE回避できればどれでもいいです。どれを使っていたらカッコイイ、とかも無いと思います。
+  
+次のコードは同じ処理をしていますが、はっきり言うとどれもイケてないな、と感じてしまいます。
+  
+```java
+BigDecimal a = null;
+
+String hoge = a == null ? null : a.toPlainString();
+String fuga = Optional.ofNullable(a).map(BigDecimal::toPlainString).orElse(null);
+```
+  
+TypescriptにはOptional Chaining、KotlinにはSafe CallというNPE回避する方法があります。```?.```と書くだけです。これで書けたら一番カッコイイのですが、Javaにはありません。
+  
+```Java
+String hoge = a?.toPlainString();
+```
+  
+---
+
+個人的には次の手癖でコーディングしています。参考程度に見てください。
+  
+- 入れ子構造と型変換が少ない
+  - ```== null```
+- 入れ子構造と型変換が多い
+  - ```Optional```型を使う
+- Stream APIで処理する
+  - ```Objects```型を使う
+
+# 終わりに
+
+Optional型は自分で生成するものではない、というイメージからなんとなく避けていましたが、複雑になったケースだと一考の余地ありますね。今回、Optional型で色々検証して安全にデータを取り出せることに気づけて良かったです。
+  
+まぁ、気を付けていても結構な頻度でNPEは起こしちゃうんですけどね…。
+  
+できれば、```@Nullable```や```@NonNull```とか表現はしてほしいのですが、自分も付与し忘れることはたくさんあるので人のことは言えません。
+  
+NPEの回避って地味に面倒なのであんまりやりたくはないのですが、起こしてしまうと恥ずかしいので今後も地道に頑張りたいです。
 
 ---
 
-各種SNSでのシェアや、今後も情報発信しますので[フォロー](https://twitter.com/nainaistar)よろしくお願いします。
+この記事がお役に立ちましたら、各種SNSでのシェアや、今後も情報発信しますので[フォロー](https://twitter.com/nainaistar)よろしくお願いします。
 
 - [技術ブログはこちら](https://nainaistar.hatenablog.com)
 - [雑記ブログはこちら](https://nainaistar.hateblo.jp)
+
+# 類似記事
+
+JavaでNullを意識せずにNullableな配列項目をStream APIで処理する
+[https://nainaistar.hatenablog.com/entry/2021/04/10/120000:embed:cite]
