@@ -1,166 +1,138 @@
-# JavaでNullPointerException回避をする方法をまとめる
+# Javaのtransientで本来は関わりのないデータであることを強調する
 
-今日も小ネタ。
-  
-NullPointerExceptionを回避するのは簡単だけど、もうちょっとスマートに書けない？
-  
-ということを纏める記事。
-  
-余談ですが、NullPointerExceptionは「ぬるぽ」とか大文字取って「NPE」とか呼んでます。以後、「NPE」で統一します。
-# 環境
-- Java
-  - 16
-
-# データ構造
-
-次のような親子孫関係を持つ。
-  
-リストでのNPE回避も表現したいので、リストも持たせています。
-  
-- Parent
-  - Child
-    - GrandChild
-
-ToDo:201。
-# 一番シンプル
-
-```!= null```で回避するのが一番簡単です。
-  
-```null```は基本型なのでIDEで色分けされて見やすいので、よく使用しています。
-  
-```java
-Parent parent = null;
-
-if(parent != null) {
-  // 以後の処理
-}
-```
-
-ただし、入れ子が複雑になると、都度null回避をしなければならないので面倒です。
-  
-```java
-if (parent != null ||
-  parent.getChild() != null ||
-  parent.getChild().getGrandChild() != null) {
-
-  BigDecimal zero = parent.getChild().getGrandChild().getRate();
-}
-```
-
-
-# Optional型を使用する
-
-Optional型に設定する方法があります。
-
-```java
-Parent parent = null;
-
-Optional.ofNullable(parent)
-  .orElse(null); // もしparentがnullならnullを返却する
-```
-  
-入れ子構造が複雑になっても、中間でNPEが発生しないのでコードが書きやすいです。
-  
-```java
-Optional.ofNullable(parent)
-    .map(Parent::getChild)
-    .map(Child::getGrandChild)
-    .map(GrandChild::getRate)
-    .orElse(BigDecimal.ZERO)
-```
-  
-型変換したい時にもOptional型を使うと、安全にNPE回避できて便利ですね。
-  
-```java
-BigDecimal a = null;
-Optional.ofNullable(a).map(BigDecimal::toPlainString).orElse(null);
-```
-
-
-# Objects型を使用する
-
-```Objects```型に```isNull```と```nonNull```メソッドがあります。
-  
-```java
-Parent parent = null;
-
-if(Objects.nonNull(parent)) {
-  // 以後の処理
-}
-```
-  
-私は単体で扱うことはあまりなく、Stream処理のfilterでNPE回避のためによく使用します。メソッド参照を使用すると、思考コストが減るので便利です。
-  
-```java
-// 親と子はいるが、孫がいないので、NPE回避を導入しないとエラーになる
-ArrayList<Child> baseDetailList = new ArrayList<>();
-baseDetailList.add(Child.builder().build());
-
-Parent parent = Parent.builder()
-  .children(baseDetailList)
-  .build();
-
-assertThat(
-  Optional.ofNullable(parent.getChildren())
-    .stream().flatMap(Collection::stream)
-    .map(Child::getGrandChildren)
-    .filter(Objects::nonNull) // NPE回避用ロジック
-//  .filter(e -> e != null) 一瞬、何がNullではないものかがわからない。  
-//  .filter(e -> e.tax != null) 実はtaxがNull以外かもしれない、という思考になる
-    .flatMap(Collection::stream)
-    .map(GrandChild::getRate)
-    .collect(Collectors.toList())
-).isEmpty();
-```
-
-# どのNPE回避方法がオススメ？
-
-NPE回避できればどれでもいいです。どれを使っていたらカッコイイ、とかも無いと思います。
-  
-次のコードは同じ処理をしていますが、はっきり言うとどれもイケてないな、と感じてしまいます。
-  
-```java
-BigDecimal a = null;
-
-String hoge = a == null ? null : a.toPlainString();
-String fuga = Optional.ofNullable(a).map(BigDecimal::toPlainString).orElse(null);
-```
-  
-TypescriptにはOptional Chaining、KotlinにはSafe CallというNPE回避する方法があります。```?.```と書くだけです。これで書けたら一番カッコイイのですが、Javaにはありません。
-  
-```Java
-String hoge = a?.toPlainString();
-```
+本来の使い方とは異なります。黙って使うと怒られるかもしれないので、導入の際は念のため確認してください。
   
 ---
-
-個人的には次の手癖でコーディングしています。参考程度に見てください。
   
-- 入れ子構造と型変換が少ない
-  - ```== null```
-- 入れ子構造と型変換が多い
-  - ```Optional```型を使う
-- Stream APIで処理する
-  - ```Objects```型を使う
+Javaには```transient```という修飾子があります。これを使うことでコードで表現できることが増えます。
+  
+# 環境
+
+- Java
+    - 15
+
+# ユースケース
+
+- コードの表現力を増やす
+    - 関係がないデータであることを表現する
+
+# Transientとは
+
+Transientは、和名で一時的という意味を持ちます。
+  
+この意味から私は「処理のために一時的に持たせた値」であることを、表現しています。
+  
+## 本来のTransientの役割
+
+transientがついているフィールドをシリアライズの対象から外します。
+  
+シリアライズとはデータを保存したり、送受信できる形に変換することを指します。
+  
+逆に保存したファイルや送受信したものを扱えるようにすることを、デシリアライズと言います。
+
+# コード
+
+例えば、このようなデータがあります。
+  
+```java
+public class Base{
+    private final String id;
+    private final String currencyCode;
+
+    public boolean is本則課税(String taxDiv){
+        return "01".equals(taxDiv);
+    }
+}
+public class CodeMaster{
+    private final String id;
+}
+```
+  
+Baseクラスにはid, currencyCodeしか持っていません。
+  
+Baseクラスが持っていない税区分を元に判別する処理がある場合、毎回外から値を渡す必要があります。1回しか使用しない場合はそれでもいいでしょう。
+  
+しかし、親子関係を持っていて、算出するたびに税区分が必要な場合、毎回外から値を渡すのは混乱の元となります。
+  
+ですので、Baseクラスにセットしておき、後で使いまわすと非常に処理が見やすくなります。
+  
+```java
+public class Base{
+    private final String id;
+    private final String currencyCode;
+    private String taxDiv;
+
+    public boolean is本則課税(){
+        return "01".equals(this.taxDiv);
+    }
+}
+public class CodeMaster{
+    private final String id;
+}
+```
+  
+ただし、この処理を行った場合、BaseクラスがtaxDivを持つ構造になってしまいます。
+  
+明確な関係性がある場合はいいのですが、極稀に曖昧な関係性しか持たない場合があります。
+  
+その場合は、transientを持たせることで、一時的な値であることを表現できます。
+  
+```java
+public class Base{
+    private final String id;
+    private final String currencyCode;
+    private transient String anotherDiv;
+
+    public boolean is本則課税(){
+        return "01".equals(this.taxDiv);
+    }
+}
+public class CodeMaster{
+    private final String id;
+}
+```
+  
+同様に、currencyCodeを元に検索したマスタを処理中に扱いたいことがあるでしょう。Baseドメインに持たせることで処理が分かりやすくなることがあります。
+  
+```java
+public class Base{
+    private final String id;
+    private final String currencyCode;
+    private transient String anotherDiv;
+    private transient CodeMaster codeMaster;
+
+    public boolean is本則課税(){
+        return "01".equals(this.taxDiv);
+    }
+}
+public class CodeMaster{
+    private final String id;
+}
+```
+
+# 注意点
+
+本来の扱い方とは違います。ですので、理解せずに使用すると意図しない挙動をすることがあります。
+  
+```SerializationUtils.clone```メソッドを使用するとクローン出来ますが、Transientを使用するとクローン出来ません。本来の使い方なので当たり前ですが。
+  
+```Lombok```のtoBuilderクラスでデータをコピーする場合は、Transientがついてもコピーできます。
+  
+このように、意図せずに挙動が変わってしまう可能性があるので、検証する必要があります。
 
 # 終わりに
 
-Optional型は自分で生成するものではない、というイメージからなんとなく避けていましたが、複雑になったケースだと一考の余地ありますね。今回、Optional型で色々検証して安全にデータを取り出せることに気づけて良かったです。
+知らないよりは知っていた方がいい、という意味を込めてこの記事を書きました。
   
-まぁ、気を付けていても結構な頻度でNPEは起こしちゃうんですけどね…。
+ただ、下手に思考を使ってしまうので、1月後の自分は大否定している可能性はあります。
   
-できれば、```@Nullable```や```@NonNull```とか表現はしてほしいのですが、自分も付与し忘れることはたくさんあるので人のことは言えません。
+インターフェースの```List```型で宣言するのか、具体的な型の```ArrayList```で宣言するのかだと、前者の方が個人的には好きですしね。
   
-NPEの回避って地味に面倒なのであんまりやりたくはないのですが、起こしてしまうと恥ずかしいので今後も地道に頑張りたいです。
-
+Effective Javaでは特にTransientの使い方等も書いてなかったですし、1つの表現方法としては一考の余地があるのではないかと考えています。
+  
 ---
 
 この記事がお役に立ちましたら、各種SNSでのシェアや、今後も情報発信しますので[フォロー](https://twitter.com/nainaistar)よろしくお願いします。
 
 - [技術ブログはこちら](https://nainaistar.hatenablog.com)
 - [雑記ブログはこちら](https://nainaistar.hateblo.jp)
-
-# 類似記事
-
-JavaでNullを意識せずにNullableな配列項目をStream APIで処理する
-[https://nainaistar.hatenablog.com/entry/2021/04/10/120000:embed:cite]
