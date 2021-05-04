@@ -1,124 +1,147 @@
-# 仕事は終わりから逆算して考える（ポエム）
-
-新人のころから言われてきていて、30目前になってもまだ上手く仕事ができないことがあるので、見つめなおすためのポエム。全ての仕事に当てはまるわけではないので、ご注意ください。
+# Springで同一クラス別コンポーネントをDIしたい（nameGenerator）
   
-この記事は要約すると「ホウレンソウをしっかりしよう」です。
+Springで開発していると、別のコンポーネントだが、同一のクラス名を作りたくなることがあります。この同名クラスをDIしない場合は、特に問題は発生しません。しかし、同一クラス名をDIしてしまうと、```BeanDifinitionStoreException```が発生してしまいます。
+  
+これは、クラスをパッケージプライベートにして可視性を狭めても、発生してしまいます。
+  
+クラス名を変更する、Beanの名前を変更する等々で簡単に回避することはできますが、クラス名が長くなったり、DIする際に変更した名前を指定する必要もあり、非常に面倒です。
+  
+それを簡単に解決できるのが、```nameGenerator```と```FullyQualifiedAnnotationBeanNameGenerator```です。
+  
+当記事では、```nameGenerator```を使用して別パッケージに配備した同一クラスの別コンポーネントを簡単にDIすることを目標とします。
+  
+# 環境
+- Java
+  - 15
+- SpringBoot
+  - 2.4.5
+
+# ゴール
+- 別パッケージに同一のクラス名を定義しても、エラーが発生しない
+
+対応しない場合は次のエラーが発生するので、それを回避します。
+  
+```log
+org.springframework.beans.factory.BeanDefinitionStoreException: Failed to parse configuration class [kirimaru.DemoApplication]; nested exception is org.springframework.context.annotation.ConflictingBeanDefinitionException: Annotation-specified bean name 'conflictService' for bean class [kirimaru.biz.domain.conflict.update.ConflictService] conflicts with existing, non-compatible bean definition of same name and class [kirimaru.biz.domain.conflict.register.ConflictService]
+
+...中略...
+
+Caused by: org.springframework.context.annotation.ConflictingBeanDefinitionException: Annotation-specified bean name 'conflictService' for bean class [kirimaru.biz.domain.conflict.update.ConflictService] conflicts with existing, non-compatible bean definition of same name and class [kirimaru.biz.domain.conflict.register.ConflictService]
+
+```
+
+# 要約
+
+- デフォルトのBean名を変更する
+  - ```ComponentScan```のnameGeneratorに```FullyQualifiedAnnotationBeanNameGenerator```を指定する
+
+
+# パッケージ構成
+
+registerとupdateパッケージの下に、Bean名が被るように同一クラス名のConflictService.javaが存在させます。
+  
+```markdown
+- Appllication.java
+  - registerパッケージ
+    - ConflictService.java
+  - updateパッケージ
+    - ConflictService.java
+```
+  
+## ConflictServiceの中身
+
+DIができるように、```Service```アノテーションを付けただけのファイルを作成します。DI対象に含められれば良いので、```Controller```, ```Component```でも問題ありません。
+  
+```java
+@Service
+public class ConflictService {
+}
+```
+
+# 対応
+
+```SpringBootApplication```を指定しているクラスに、```ComponentScan```を指定します。
+  
+次に、```ComponentScan```のnameGeneratorに```FullyQualifiedAnnotationBeanNameGenerator.class```を指定します。
+  
+```java
+@SpringBootApplication
+@ComponentScan(nameGenerator = FullyQualifiedAnnotationBeanNameGenerator.class)
+public class Application {
+  public static void main(String[] args) {
+    SpringApplication.run(Application.class, args);
+  }
+}
+```
+## 説明
+
+デフォルトのBean名はクラス名になります。今回の場合、```ConflictService```です。
+  
+今回の```FullyQualifiedAnnotationBeanNameGenerator```を指定することで、生成されるBean名が完全修飾クラス名になります。今回の場合、```register.ConflictService```と```update.ConflictService```の2つに分かれます。
+  
+Javaでは同一パッケージ、同一クラスは配備できないので、どのパターンでも対応できると思います。
+  
+なお、```FullyQualifiedAnnotationBeanNameGenerator```はSpringFrameworkの[5.2.3](https://docs.spring.io/spring-framework/docs/5.2.3.RELEASE/spring-framework-reference/)に導入されました。このリリースは2020年1月14日と最近のリリースです。もしSpringのアップデートできないが、同様の処理をしたいという場合には[こちらの方の記事](https://layerprogram.com/springcontrollerdi/)を参考にしてください。
+
+
+## 備考
+
+もし、SpringBootApplicationに```scanBasePackages```を指定している場合は、```ComponentScan```のbasePackagesにも同様に指定してください。
+  
+こちらを指定しないと、探索するパッケージが異なるために目的通りのDIができないことがあります。
+  
+```java
+@SpringBootApplication(scanBasePackages = {"kirimaru"})
+@ComponentScan(basePackages = "kirimaru", nameGenerator = FullyQualifiedAnnotationBeanNameGenerator.class)
+public class Application {
+  public static void main(String[] args) {
+    SpringApplication.run(Application.class, args);
+  }
+}
+```
+
+
+# テストする方法
+
+※ ここからは一般論ではなく、私のローカル環境で発生したものです。
   
 ---
   
-当たり前の話ですが、納品が必要な仕事では納品物を作成する必要があります。
+```FullyQualifiedAnnotationBeanNameGenerator```を使用し、Bean名が変更されたので、DIできるように設定する必要があります。
   
-エンジニアだとコードを納品することが多いのではないでしょうか。（私はインフラエンジニアや保守運用等々のエンジニアの経験が無いので、何を納品するかわかっていません。）
+私の場合は、こちらのアノテーションを追加すると、読み込むことができるようになりました。
   
-それで、コードを納品した後に言われるんです。
+- @AutoConfigureWebClient
   
-「で、設計書は？」
+WebMvcTestを使用していれば、次のアノテーションを含んでいるので意識して追加する必要は少ないと思います。
   
-似たような経験はありませんか？当人としては仕事を完了したと思ったのに、後から認識していなかった条件が提示された経験はどなたもあると思います。
+- @AutoConfigureCache
+- @AutoConfigureWebMvc
+- @AutoConfigureMockMvc
   
-これを回避するためには、作業の初期に**作業者**が作業の終了条件を**依頼者**と認識合わせをしておく必要があります。
-  
-# 登場人物（アクター）
-
-- 作業者
-    - 作業する人。
-- 依頼者
-    - 作業を依頼した人。作業の完了を受け入れる人。
-
-# 終了条件の整理
-  
-仕事内容にもよりますが、私の場合は次を意識していると相手との会話がスムーズになることが多いです。
-  
-- 納品物の整理
-    - フォーマット確認
-    - 内容確認
-- 実装対象の機能リスト
-    - 事前条件や実行条件、事後条件等々
-- 業務フローに沿ったテスト一覧
-- どの粒度のテストまで行うか
-  
-作業の終了条件の認識合わせで大事なのは、内容がすべて満たせている場合は必ず相手に作業終了を受け入れて貰うことです。
-  
-作成物の品質が悪い場合は受け入れることはできません。しかし、依頼者の条件提示が不足することは無くなります。もし、条件提示の不足が起こった場合は、認識合わせの場で言わなかった依頼者が悪いのです。
-  
-だからといって、依頼者を責める必要はありません。依頼者も人間なので確認漏れはよくありますし、作業が終了する1週間後、状況が変わっていることはよくある話です。
-  
-その場合は、今の作業は完了にしつつ、追加作業という形で管理しましょう。または、スケジュールの期日を伸ばしてもいいです。
-  
-作業者と依頼者のお互いが納得するようにコミュニケーションをとると、ストレスが大きく減ります。
+意識的に読み込まないといけないので、読み込むアノテーションの数が増えたら、新しいアノテーションを作ってもいいかもしれません。
   
 ---
-  
-これは経験則ですが、できるだけ責任は偉い人に取ってもらえるように立ち回るとうまくいくことが多いです。今回の場合は、依頼者ですね。
-  
-相手が悪いのか、自分が悪いのかで納得感が違うためです。
-  
-本来であれば、作業者が悪いのは依頼者の管理能力不足でしょうが、そういう目線で守ってくれることは経験上ありませんでした。で、スケジュールの期日が伸びずに残業でカバーする毎日…。
-  
-相手に納得してもらうコミュニケーション術は大事です。
 
-# 作業の完了度は作業の理解度
+```SpringJUnitConfig```を使用している場合は、ComponentScanを併用していると思いますので、こちらにnameGeneratorを追加すると動くようになると思われます。
+  
+```java
+@ComponentScan(value = {"kirimaru.biz.domain"}, nameGenerator = FullyQualifiedAnnotationBeanNameGenerator.class)
+static class Config {
+}
+```
 
-作業が完了する頃には、その作業に対して最も理解しているのは作業者です。逆に言うと、作業を完了させるためには、作業を理解する必要があります。
-  
-では、作業を完了させるまでの中間の理解はどうなっているでしょうか。
-  
-毎日コツコツと理解できるでしょうか。
-  
-ToDo: 501。
-  
-実際にはコツコツと理解することはできません。だいたい、作業終盤に急に理解したり、レビューで理解できることが多いのではないでしょうか。
-  
-ToDo: 502.
-  
-後で理解するのと、先に理解しておくのでは、当然先に理解する方がいいです。早期に作業の終了条件を定義するのは、理解を前倒しにするためです。
-  
-ToDo: 503.
-  
-いかに早く理解するか。いかに早く失敗するか、というのは大事です。
-  
-個人的に10年近く仕事をしてきた経験から、知らなくてもいいことは想像よりも少ないです。
-  
-例えば**返金**機能を実装するとしましょう。その場合、**返金**機能だけを理解すればいいものではありません。**返金**するためには**売上**を事前にしなければなりませんし、**売上**の前に**入荷**等の機能もあるかもしれません。**返金**したら次は**返品**等もあるでしょうし、**返金**した分は**売上**に反映しないといけないでしょう。
-  
-そのような業務フロー、事前条件を理解しないまま作成することは可能ですが、手戻りが発生する確率は非常に高くなります。
-  
-なお、理解度を深めるために「とりあえずやる」は危険信号です。できるだけ本番に近い状態にして早く失敗することは大事ですが、行き当たりばったりになりかねないです。
-  
-結局、「要はバランス」ということになりかねないですが、少なくともそのシステムが請け負う主要な業務フローは理解しておくといいでしょう。
+# ソースコード
 
+実装コード
+[https://github.com/hirotoKirimaru/cucumber-sample/blob/36d3cec61c97321dadb744ce70a15b5f35e67730/src/main/java/kirimaru/DemoApplication.java]
   
-# 備考
-
-この記事では終了条件という表現をしていましたが、アジャイルだとDoneの条件(Definition of done, DoD)、受入条件(Acceptance Criteria, AC)と表現しています。
-  
-Doneの条件と受入条件は表現していることが異なります。
-  
-- Doneの条件
-    - 全ての作業でやるべきこと
-        - 資料の作成する
-        - テストする
-        - 等々
-- 受入条件
-    - それぞれの作業でやるべきこと
-        - 業務フローに沿った「入荷」して「売上」して「返金」できることを確認する
-        - 等々の具体的な内容
-  
-Doneの条件は開発者が品質を担保し、受入条件はプロダクトオーナーが機能を担保します。
-  
-責務が分かれているので、言葉の定義が分かれていますが、結局のところやることは変わらないので、豆知識として覚えてください。
-  
-なお、競技プログラミングでもACと言いますが、競技プログラミングのACはAccepted（受け入れました）らしいので、ちょっと意味は異なります。
 
 # 終わりに
 
-「段取り八分・仕事二分」とも言われています。
+テストができなくて記事にできませんでしたが、teratailで回答いただけでようやくテストができるようになりました。```WebMvcTest```のアノテーションを使っていたので、十分インポートできていると思っていたのですが、まだ足りなかったとは…。
   
-段取りが多すぎて仕事をする時間が取れない…ということもありますが、手戻りが発生すると大変です。最悪、スケジュールが遅れてることの説明、その説明の準備…と無駄な仕事が増えることも多々あります。
-  
-私はコミュニケーションをすると非常に体力を持っていかれるので苦手なタイプですが、そのデメリットを上回るほどのメリットを感じてきました。
-  
-ぜひ、仕事がうまくいかないという場合は、終わりから逆算するようにし、相手との納得感を持ちながらコミュニケーションをしてみましょう。
+この辺の設定周りは苦手ですね。精進していきたいです。
   
 ---
 
@@ -126,3 +149,30 @@ Doneの条件は開発者が品質を担保し、受入条件はプロダクト�
 
 - [技術ブログはこちら](https://nainaistar.hatenablog.com)
 - [雑記ブログはこちら](https://nainaistar.hateblo.jp)
+
+
+# 経緯
+
+```FullyQualifiedAnnotationBeanNameGenerator```を知った経緯。いろふさんありがとうございました。
+  
+[https://twitter.com/nainaistar/status/1375250554801115136?s=20:embed:cite]
+  
+[https://twitter.com/irof/status/1375253835510247430:embed:cite]
+
+# 参考
+
+【Java・Spring Boot】別パッケージにて、同じクラス名でDIしたいとき
+[https://layerprogram.com/springcontrollerdi/:embed:cite]
+  
+teratail: デフォルト以外のBean名生成をしつつ、WebMvcTest等でDIを行うテストをしたい
+[https://teratail.com/questions/330073:embed:cite]
+  
+Spring JavaDoc: FullyQualifiedAnnotationBeanNameGenerator
+[https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/context/annotation/FullyQualifiedAnnotationBeanNameGenerator.html:embed:cite]
+  
+ImportAutoConfigurationのパッケージ
+[https://spring.pleiades.io/spring-boot/docs/current/api/org/springframework/boot/autoconfigure/class-use/ImportAutoConfiguration.html:embed:cite]
+  
+自動構成アノテーションのテスト
+[https://spring.pleiades.io/spring-boot/docs/current/reference/html/appendix-test-auto-configuration.html#test-auto-configuration:embed:cite]
+
