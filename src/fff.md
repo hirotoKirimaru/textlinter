@@ -1,147 +1,189 @@
-# Springで同一クラス別コンポーネントをDIしたい（nameGenerator）
+# Javaでリフレクションを素振りする
   
-Springで開発していると、別のコンポーネントだが、同一のクラス名を作りたくなることがあります。この同名クラスをDIしない場合は、特に問題は発生しません。しかし、同一クラス名をDIしてしまうと、```BeanDifinitionStoreException```が発生してしまいます。
+基本的にはコードが読みづらくなるので、リフレクションは使ってはいけません。しかし、非推奨であることと、使えないことは違います。
   
-これは、クラスをパッケージプライベートにして可視性を狭めても、発生してしまいます。
-  
-クラス名を変更する、Beanの名前を変更する等々で簡単に回避することはできますが、クラス名が長くなったり、DIする際に変更した名前を指定する必要もあり、非常に面倒です。
-  
-それを簡単に解決できるのが、```nameGenerator```と```FullyQualifiedAnnotationBeanNameGenerator```です。
-  
-当記事では、```nameGenerator```を使用して別パッケージに配備した同一クラスの別コンポーネントを簡単にDIすることを目標とします。
-  
+当記事では、Javaでリフレクションを使ってprivateメソッドを呼び出せることを目標とします。
+
 # 環境
 - Java
   - 15
-- SpringBoot
-  - 2.4.5
+- Lombok
+
 
 # ゴール
-- 別パッケージに同一のクラス名を定義しても、エラーが発生しない
+- 別のクラスからリフレクションを使ってprivateメソッドを呼び出す
 
-対応しない場合は次のエラーが発生するので、それを回避します。
-  
-```log
-org.springframework.beans.factory.BeanDefinitionStoreException: Failed to parse configuration class [kirimaru.DemoApplication]; nested exception is org.springframework.context.annotation.ConflictingBeanDefinitionException: Annotation-specified bean name 'conflictService' for bean class [kirimaru.biz.domain.conflict.update.ConflictService] conflicts with existing, non-compatible bean definition of same name and class [kirimaru.biz.domain.conflict.register.ConflictService]
+# ユースケース
+- テストクラスでprivateメソッドを実行したい
+  - そもそも、テストしたいメソッドはパッケージプライベートか、protectedにしましょう。
+- 巨大なネストするクラスから目的の変数を取得したい
 
-...中略...
+# クラス構成
 
-Caused by: org.springframework.context.annotation.ConflictingBeanDefinitionException: Annotation-specified bean name 'conflictService' for bean class [kirimaru.biz.domain.conflict.update.ConflictService] conflicts with existing, non-compatible bean definition of same name and class [kirimaru.biz.domain.conflict.register.ConflictService]
-
-```
-
-# 要約
-
-- デフォルトのBean名を変更する
-  - ```ComponentScan```のnameGeneratorに```FullyQualifiedAnnotationBeanNameGenerator```を指定する
-
-
-# パッケージ構成
-
-registerとupdateパッケージの下に、Bean名が被るように同一クラス名のConflictService.javaが存在させます。
-  
-```markdown
-- Appllication.java
-  - registerパッケージ
-    - ConflictService.java
-  - updateパッケージ
-    - ConflictService.java
-```
-  
-## ConflictServiceの中身
-
-DIができるように、```Service```アノテーションを付けただけのファイルを作成します。DI対象に含められれば良いので、```Controller```, ```Component```でも問題ありません。
+この記事ではユースケースを意識するために、親子関係をもつクラスを使用します。
   
 ```java
-@Service
-public class ConflictService {
+- Parent
+  - Child
+    - GrandChild
+```
+  
+```java
+@Value
+@Builder
+public class Parent {
+  private Child child;
 }
 ```
-
-# 対応
-
-```SpringBootApplication```を指定しているクラスに、```ComponentScan```を指定します。
-  
-次に、```ComponentScan```のnameGeneratorに```FullyQualifiedAnnotationBeanNameGenerator.class```を指定します。
   
 ```java
-@SpringBootApplication
-@ComponentScan(nameGenerator = FullyQualifiedAnnotationBeanNameGenerator.class)
-public class Application {
-  public static void main(String[] args) {
-    SpringApplication.run(Application.class, args);
+@Value
+@Builder
+public class Child {
+  private GrandChild grandChild;
+}
+```
+  
+```java
+@Value
+@Builder
+public class GrandChild {
+  private String description;
+  
+  // 引数無し
+  private String getDescription() {
+    return description;
   }
-}
-```
-## 説明
 
-デフォルトのBean名はクラス名になります。今回の場合、```ConflictService```です。
-  
-今回の```FullyQualifiedAnnotationBeanNameGenerator```を指定することで、生成されるBean名が完全修飾クラス名になります。今回の場合、```register.ConflictService```と```update.ConflictService```の2つに分かれます。
-  
-Javaでは同一パッケージ、同一クラスは配備できないので、どのパターンでも対応できると思います。
-  
-なお、```FullyQualifiedAnnotationBeanNameGenerator```はSpringFrameworkの[5.2.3](https://docs.spring.io/spring-framework/docs/5.2.3.RELEASE/spring-framework-reference/)に導入されました。このリリースは2020年1月14日と最近のリリースです。もしSpringのアップデートできないが、同様の処理をしたいという場合には[こちらの方の記事](https://layerprogram.com/springcontrollerdi/)を参考にしてください。
-
-
-## 備考
-
-もし、SpringBootApplicationに```scanBasePackages```を指定している場合は、```ComponentScan```のbasePackagesにも同様に指定してください。
-  
-こちらを指定しないと、探索するパッケージが異なるために目的通りのDIができないことがあります。
-  
-```java
-@SpringBootApplication(scanBasePackages = {"kirimaru"})
-@ComponentScan(basePackages = "kirimaru", nameGenerator = FullyQualifiedAnnotationBeanNameGenerator.class)
-public class Application {
-  public static void main(String[] args) {
-    SpringApplication.run(Application.class, args);
+  // 引数あり
+  private int computeMultiple(int num1, int num2) {
+    return num1 * num2;
   }
-}
+
+  // 可変長引数の引数あり
+  private int computeMultipleArray(int... nums) {
+    int tmp = 1;
+    for (int num : nums) {
+      tmp *= num;
+    }
+    return tmp;
+  }
 ```
 
 
-# テストする方法
+# 引数無しのprivateメソッドを実行する
 
-※ ここからは一般論ではなく、私のローカル環境で発生したものです。
+まずはリフレクション対象のインスタンスを生成します。
   
----
+次にインスタンスから、リフレクションしたいprivateメソッドを取得します。一度```getClass```でクラスを取得してから、```getDeclaredMethod```でメソッドを取得できます。
   
-```FullyQualifiedAnnotationBeanNameGenerator```を使用し、Bean名が変更されたので、DIできるように設定する必要があります。
+次に、```setAccessible```で可視性を変更します。実行しない場合は、```java.lang.IllegalAccessException```が発生し、可視性を変更する必要があるとメッセージが出力されます。
   
-私の場合は、こちらのアノテーションを追加すると、読み込むことができるようになりました。
-  
-- @AutoConfigureWebClient
-  
-WebMvcTestを使用していれば、次のアノテーションを含んでいるので意識して追加する必要は少ないと思います。
-  
-- @AutoConfigureCache
-- @AutoConfigureWebMvc
-- @AutoConfigureMockMvc
-  
-意識的に読み込まないといけないので、読み込むアノテーションの数が増えたら、新しいアノテーションを作ってもいいかもしれません。
-  
----
-
-```SpringJUnitConfig```を使用している場合は、ComponentScanを併用していると思いますので、こちらにnameGeneratorを追加すると動くようになると思われます。
+最後に、取得したprivateメソッドの```invoke```にインスタンスをパラメータ渡すと実行することができます。戻り値がある場合は、Object型で返却されるので必要に応じてキャストしてください。
   
 ```java
-@ComponentScan(value = {"kirimaru.biz.domain"}, nameGenerator = FullyQualifiedAnnotationBeanNameGenerator.class)
-static class Config {
+@Test
+void test_01() throws Exception {
+  // リフレクション対象のインスタンス生成
+  GrandChild target = GrandChild.builder()
+      .description("説明")
+      .build();
+
+  // メソッドを取得する
+  Method method = target.getClass().getDeclaredMethod("getDescription");
+  // privateメソッドにアクセスできるようにする
+  method.setAccessible(true);
+  // インスタンスからメソッドを実行して値を取得する
+  String result = (String) method.invoke(target);
+  assertThat(result).isEqualTo("説明");
+}
+```
+
+# 引数ありのprivateメソッドを実行する
+
+引数無しのprivateメソッドの実行との比較差分は2つです。
+  
+- メソッドを指定するときにパラメータの数と型を指定すること
+- invokeメソッドに実際のパラメータを渡すこと
+  
+Javaには同名クラスでパラメータが異なるオーバーロードがありますので、面倒くさがらずに設定する必要があります。
+  
+```java
+@Test
+void test_03() throws Exception {
+  // リフレクション対象のインスタンス生成
+  GrandChild target = GrandChild.builder()
+      .build();
+
+  // メソッドを取得する
+  Method method = target.getClass()
+    .getDeclaredMethod("computeMultiple", int.class, int.class);
+  // privateメソッドにアクセスできるようにする
+  method.setAccessible(true);
+  // インスタンスからメソッドを実行して値を取得する
+  int result = (int) method.invoke(target, 100, 20);
+  assertThat(result).isEqualTo(2000);
+}
+```
+  
+なお、可変長引数の場合は、内部的には配列になっていますので、配列を渡しましょう。リフレクションを使わない普通のメソッドであれば可変長でパラメータを渡せますが、リフレクション時には明示的に配列にしなければいけない点がポイントです。
+  
+```java
+@Test
+void test_04() throws Exception {
+  GrandChild target = GrandChild.builder()
+      .build();
+
+  Method method = target.getClass()
+    .getDeclaredMethod("computeMultipleArray", int[].class);
+  method.setAccessible(true);
+  int result = (int) method.invoke(target, new int[]{100, 20, 3, 4});
+  // この渡し方はできない
+// int result = (int) method.invoke(target, 100, 20, 3, 4);
+  assertThat(result).isEqualTo(24000);
+}
+```
+
+# 巨大なネストするクラスから目的の変数を取得したい
+
+この項目の新規性はありません。ユースケースを意識したものとなります。
+  
+例えば、「メールに必要な文言を巨大なネストするクラスから取得したい。しかも、簡単に書き換えられるようにマスタで管理したい。」という要件があったとします。
+  
+この要件を満たすために、マスタでは```getChild.getGrandChild.getTax```という文言だけを管理しておいて、その値を元にリフレクションをするようにします。
+  
+今回の例では、ParentクラスからChildクラスを取得し、ChildクラスからGrandChildクラスを取得し、GrandChildクラスのtax変数を取得します。
+  
+```java
+@Test
+void test_02() throws Exception {
+  Parent target = Parent.builder()
+      .child(Child.builder()
+          .grandChild(GrandChild.builder()
+              .tax(123)
+              .build())
+          .build())
+      .build();
+
+  Object child = target.getClass().getDeclaredMethod("getChild").invoke(target);
+  Object grandChild = child.getClass().getDeclaredMethod("getGrandChild").invoke(child);
+  Object tax = grandChild.getClass().getDeclaredMethod("getTax").invoke(grandChild);
+
+  assertThat(tax).isEqualTo(123);
 }
 ```
 
 # ソースコード
 
 実装コード
-[https://github.com/hirotoKirimaru/cucumber-sample/blob/36d3cec61c97321dadb744ce70a15b5f35e67730/src/main/java/kirimaru/DemoApplication.java]
+[https://github.com/hirotoKirimaru/cucumber-sample/blob/f0c29859acb37d5f94561d606db7670a1d61918a/src/test/java/kirimaru/biz/domain/ReflectionTests.java#L81a]
   
 
 # 終わりに
 
-テストができなくて記事にできませんでしたが、teratailで回答いただけでようやくテストができるようになりました。```WebMvcTest```のアノテーションを使っていたので、十分インポートできていると思っていたのですが、まだ足りなかったとは…。
+リフレクションは基本使いたくありませんが、たまに使いたくなる時があります。
   
-この辺の設定周りは苦手ですね。精進していきたいです。
+実際は、Springの機能でもうちょっと簡単にリフレクションで値を取得できたりするのですが、それはまた別の記事にてご紹介させてください。
   
 ---
 
@@ -150,29 +192,10 @@ static class Config {
 - [技術ブログはこちら](https://nainaistar.hatenablog.com)
 - [雑記ブログはこちら](https://nainaistar.hateblo.jp)
 
-
-# 経緯
-
-```FullyQualifiedAnnotationBeanNameGenerator```を知った経緯。いろふさんありがとうございました。
-  
-[https://twitter.com/nainaistar/status/1375250554801115136?s=20:embed:cite]
-  
-[https://twitter.com/irof/status/1375253835510247430:embed:cite]
-
 # 参考
 
-【Java・Spring Boot】別パッケージにて、同じクラス名でDIしたいとき
-[https://layerprogram.com/springcontrollerdi/:embed:cite]
+何かの時にスッと使える力技 - Reflection 編
+[https://qiita.com/KeithYokoma/items/9e692808095acf560bc9:embed:cite]
   
-teratail: デフォルト以外のBean名生成をしつつ、WebMvcTest等でDIを行うテストをしたい
-[https://teratail.com/questions/330073:embed:cite]
-  
-Spring JavaDoc: FullyQualifiedAnnotationBeanNameGenerator
-[https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/context/annotation/FullyQualifiedAnnotationBeanNameGenerator.html:embed:cite]
-  
-ImportAutoConfigurationのパッケージ
-[https://spring.pleiades.io/spring-boot/docs/current/api/org/springframework/boot/autoconfigure/class-use/ImportAutoConfiguration.html:embed:cite]
-  
-自動構成アノテーションのテスト
-[https://spring.pleiades.io/spring-boot/docs/current/reference/html/appendix-test-auto-configuration.html#test-auto-configuration:embed:cite]
-
+リフレクション
+[https://www.ne.jp/asahi/hishidama/home/tech/java/reflection.html:embed:cite]
