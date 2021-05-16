@@ -1,22 +1,32 @@
-# Javaでリフレクションを素振りする
+# SpringのSpELでネストしたクラスの値をリフレクションして取得する
   
-基本的にはコードが読みづらくなるので、リフレクションは使ってはいけません。しかし、非推奨であることと、使えないことは違います。
+Java単体でもリフレクションで値を取得できます。しかし、ネストされた値を取得することは非常に面倒です。
   
-当記事では、Javaでリフレクションを使ってprivateメソッドを呼び出せることを目標とします。
-
+Springではもっと簡単に値を取得することができます。それは、Spring式言語(Spring Expression Language、以後 SpELと表現します)を使用した方法です。
+  
+今回の記事では、SpELを活用してネストしたクラスの値をリフレクションして取得することを目指します。
+  
 # 環境
 - Java
   - 15
+- Spring Boot
+  - 2.4.5
 - Lombok
 
-
 # ゴール
-- 別のクラスからリフレクションを使ってprivateメソッドを呼び出す
+- 別のクラスからリフレクションを使って値を取得する
+
+# 前提
+- Getterがprivateではないこと
 
 # ユースケース
-- テストクラスでprivateメソッドを実行したい
-  - そもそも、テストしたいメソッドはパッケージプライベートか、protectedにしましょう。
-- 巨大なネストするクラスから目的の変数を取得したい
+- ネストするクラスから目的の変数を取得したい
+
+例えば、「メールに必要な文言を巨大なネストするクラスから取得したい。しかも、簡単に書き換えられるようにマスタで管理したい。」という要件があったとします。
+  
+この要件を満たすために、マスタでは```child.grandChild.tax```という文言だけを管理しておいて、その値を元にリフレクションをする。
+  
+といったケースに使えると思います。
 
 # クラス構成
 
@@ -33,6 +43,7 @@
 @Builder
 public class Parent {
   private Child child;
+  private List<Child> children;
 }
 ```
   
@@ -41,6 +52,7 @@ public class Parent {
 @Builder
 public class Child {
   private GrandChild grandChild;
+  private List<GrandChild> grandChildren;
 }
 ```
   
@@ -48,115 +60,50 @@ public class Child {
 @Value
 @Builder
 public class GrandChild {
-  private String description;
-  
-  // 引数無し
-  private String getDescription() {
-    return description;
-  }
-
-  // 引数あり
-  private int computeMultiple(int num1, int num2) {
-    return num1 * num2;
-  }
-
-  // 可変長引数の引数あり
-  private int computeMultipleArray(int... nums) {
-    int tmp = 1;
-    for (int num : nums) {
-      tmp *= num;
-    }
-    return tmp;
-  }
+  private String tax;
+  private Map<String, Integer> animals = 
+    Map.of("dog", 1, "cat", 3, "mouse", 10);  
+}
 ```
 
+# ネストしないクラスをリフレクションで取得する
 
-# 引数無しのprivateメソッドを実行する
+まずはもっとも簡単な方法です。```GrandChild```クラスの```tax```変数を取得します。
+  
+リフレクション対象のインスタンスをまずは生成します。
+  
+その後、```StandardEvaluationContext```のコンストラクタにインスタンスを渡して生成します。
+  
+最後に```SpEL```を解釈するための```ExpressionParser```を生成し、リフレクションします。
+  
+```java
+@Test
+void test_01_01() throws Exception {
+  // リフレクション対象インスタンス生成
+  var target = GrandChild.builder()
+          .tax(123)
+          .build();
 
-まずはリフレクション対象のインスタンスを生成します。
+  // StandardEvaluationContextを生成する
+  StandardEvaluationContext context = new StandardEvaluationContext(target);
+  // ExpressionParserを生成する
+  ExpressionParser expressionParser = new SpelExpressionParser();
+  // インスタンスの変数名「tax」を指定して取得する
+  Object tax = expressionParser.parseExpression("tax").getValue(context);
+
+  assertThat(tax).isEqualTo(123);
+}
+```
+
+# ネストするクラスをリフレクションで取得する
+
+```Parent```クラスの変数の```Child```クラスの変数の```GrandChild```クラスの```tax```変数を取得します。```SpEL```としては```child.grandchild.tax```で表現します。
   
-次にインスタンスから、リフレクションしたいprivateメソッドを取得します。一度```getClass```でクラスを取得してから、```getDeclaredMethod```でメソッドを取得できます。
-  
-次に、```setAccessible```で可視性を変更します。実行しない場合は、```java.lang.IllegalAccessException```が発生し、可視性を変更する必要があるとメッセージが出力されます。
-  
-最後に、取得したprivateメソッドの```invoke```にインスタンスをパラメータ渡すと実行することができます。戻り値がある場合は、Object型で返却されるので必要に応じてキャストしてください。
+ネストしていない場合と処理はまったく変わりません。
   
 ```java
 @Test
 void test_01() throws Exception {
-  // リフレクション対象のインスタンス生成
-  GrandChild target = GrandChild.builder()
-      .description("説明")
-      .build();
-
-  // メソッドを取得する
-  Method method = target.getClass().getDeclaredMethod("getDescription");
-  // privateメソッドにアクセスできるようにする
-  method.setAccessible(true);
-  // インスタンスからメソッドを実行して値を取得する
-  String result = (String) method.invoke(target);
-  assertThat(result).isEqualTo("説明");
-}
-```
-
-# 引数ありのprivateメソッドを実行する
-
-引数無しのprivateメソッドの実行との比較差分は2つです。
-  
-- メソッドを指定するときにパラメータの数と型を指定すること
-- invokeメソッドに実際のパラメータを渡すこと
-  
-Javaには同名クラスでパラメータが異なるオーバーロードがありますので、面倒くさがらずに設定する必要があります。
-  
-```java
-@Test
-void test_03() throws Exception {
-  // リフレクション対象のインスタンス生成
-  GrandChild target = GrandChild.builder()
-      .build();
-
-  // メソッドを取得する
-  Method method = target.getClass()
-    .getDeclaredMethod("computeMultiple", int.class, int.class);
-  // privateメソッドにアクセスできるようにする
-  method.setAccessible(true);
-  // インスタンスからメソッドを実行して値を取得する
-  int result = (int) method.invoke(target, 100, 20);
-  assertThat(result).isEqualTo(2000);
-}
-```
-  
-なお、可変長引数の場合は、内部的には配列になっていますので、配列を渡しましょう。リフレクションを使わない普通のメソッドであれば可変長でパラメータを渡せますが、リフレクション時には明示的に配列にしなければいけない点がポイントです。
-  
-```java
-@Test
-void test_04() throws Exception {
-  GrandChild target = GrandChild.builder()
-      .build();
-
-  Method method = target.getClass()
-    .getDeclaredMethod("computeMultipleArray", int[].class);
-  method.setAccessible(true);
-  int result = (int) method.invoke(target, new int[]{100, 20, 3, 4});
-  // この渡し方はできない
-// int result = (int) method.invoke(target, 100, 20, 3, 4);
-  assertThat(result).isEqualTo(24000);
-}
-```
-
-# 巨大なネストするクラスから目的の変数を取得したい
-
-この項目の新規性はありません。ユースケースを意識したものとなります。
-  
-例えば、「メールに必要な文言を巨大なネストするクラスから取得したい。しかも、簡単に書き換えられるようにマスタで管理したい。」という要件があったとします。
-  
-この要件を満たすために、マスタでは```getChild.getGrandChild.getTax```という文言だけを管理しておいて、その値を元にリフレクションをするようにします。
-  
-今回の例では、ParentクラスからChildクラスを取得し、ChildクラスからGrandChildクラスを取得し、GrandChildクラスのtax変数を取得します。
-  
-```java
-@Test
-void test_02() throws Exception {
   Parent target = Parent.builder()
       .child(Child.builder()
           .grandChild(GrandChild.builder()
@@ -165,37 +112,60 @@ void test_02() throws Exception {
           .build())
       .build();
 
-  Object child = target.getClass().getDeclaredMethod("getChild").invoke(target);
-  Object grandChild = child.getClass().getDeclaredMethod("getGrandChild").invoke(child);
-  Object tax = grandChild.getClass().getDeclaredMethod("getTax").invoke(grandChild);
+  StandardEvaluationContext context = new StandardEvaluationContext(target);
+  ExpressionParser expressionParser = new SpelExpressionParser();
+  Object tax = expressionParser.parseExpression("child.grandChild.tax").getValue(context);
 
   assertThat(tax).isEqualTo(123);
 }
 ```
 
+# リストやマップの項目をリフレクションで取得する
+
+処理は同じですので、```SpEL```のみ記載します。Java単体だとコレクション処理が面倒なので、非常に嬉しいですね。
+  
+## リストの項目を取得する
+
+配列の順番を指定して取得できます。
+  
+- ```children[0].grandChildren[0].tax```
+  
+## マップの項目を取得する
+
+マップのKeyを指定することで、対応するValueを取得することができます。
+  
+- ```children[0].grandChildren[0].animals['dog']```
+
+# SpEL式をもっと使いこなす
+
+単純なリフレクションだけでなく、```SpEL```を使用することができます。無理に使うケースは無いと考えていますが、一応覚えておきましょう。
+  
+次の例は、マップのサイズが1より大きい場合はtrueを返却するSpELです。
+  
+- ```children[0].grandChildren[0].animals.size() > 1```
+  
+SpELをもっと知りたい場合は、こちらのページが参考になりました。
+  
+[https://www.baeldung.com/spring-expression-language:embed:cite]
+
 # ソースコード
 
 実装コード
-[https://github.com/hirotoKirimaru/cucumber-sample/blob/f0c29859acb37d5f94561d606db7670a1d61918a/src/test/java/kirimaru/biz/domain/ReflectionTests.java#L81a]
+[https://github.com/hirotoKirimaru/cucumber-sample/blob/63230957325a487f23c6800457f5565506e9c551/src/test/java/kirimaru/biz/domain/ReflectionTests.java#L26]
   
 
 # 終わりに
 
-リフレクションは基本使いたくありませんが、たまに使いたくなる時があります。
-  
-実際は、Springの機能でもうちょっと簡単にリフレクションで値を取得できたりするのですが、それはまた別の記事にてご紹介させてください。
+Springの機能を使用すると簡単にリフレクションをすることができます。リフレクション = SpELではないので、なかなか検索されないワードだと思いますが、便利ですのでぜひ使ってみてください。
   
 ---
 
-この記事がお役に立ちましたら、各種SNSでのシェアや、今後も情報発信しますので[フォロー](https://twitter.com/nainaistar)よろしくお願いします。
+この記事お役に立ちましたら、各種SNSでのシェアや、今後も情報発信しますので[フォロー](https://twitter.com/nainaistar)よろしくお願いします。
 
 - [技術ブログはこちら](https://nainaistar.hatenablog.com)
 - [雑記ブログはこちら](https://nainaistar.hateblo.jp)
 
 # 参考
 
-何かの時にスッと使える力技 - Reflection 編
-[https://qiita.com/KeithYokoma/items/9e692808095acf560bc9:embed:cite]
-  
-リフレクション
-[https://www.ne.jp/asahi/hishidama/home/tech/java/reflection.html:embed:cite]
+baeldung: Spring Expression Language Guide
+[https://www.baeldung.com/spring-expression-language:embed:cite]
