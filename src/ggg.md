@@ -1,68 +1,73 @@
-# 【Tips】Google スプレッドシートの日付フォーマットを変更する
-  
-Googleスプレッドシートに関しては、公式ヘルプが優秀なので、画像以外は新規性ないです。
-  
----
+# IntelliJ IDEAでmavenの依存関係をbuild.gradleにコピペするとGradle用に自動変換される
 
-スプレッドシートの言語と地域を元に通貨・日付・番号フォーマットが決定されます。
+超小ネタ。Mavenでライブラリが書いてあるから、それをGradle用に書き直したいとコピペしていた時に気づきました。
   
-言語と地域をアメリカ合衆国に設定していると、デフォルト日付フォーマットは「M/d/yyyy」(5/6/2021, 12/24/2021 等々)です。日本のデフォルト日付フォーマットは「yyyy/MM/dd」(2021/05/05, 2021/12/24 等々)です。
-  
-見慣れないフォーマットの資料は非常に解読に苦労します。
-  
-当記事では、解読が簡単にできるように、次の3つの操作ができるようになることをゴールとします。
-  
-- アカウントの言語と地域を変更して通貨・日付・番号フォーマットを変更する
-- スプレッドシートの言語と地域を変更して通貨・日付・番号フォーマットを変更する
-- セルごとに通貨・日付・番号フォーマットを変更する
+なお、IntelliJ IDEAでこの機能名を探したのですが、見つかりませんでした。
   
 # 環境
-- SpreadSheet
-  - 2021/05/15 時点
+- Intellij IDEA Ultimate
+    - 2021.1.2
 
-# アカウントの言語と地域を変更して通貨・日付・番号フォーマットを変更する
+# 機能
 
-新規にスプレッドシートを作成するときは、アカウントの言語と地域がスプレッドシートの言語と地域に設定されます。下記のページから「優先言語」を変更してください。
+[Spring Boot](https://mvnrepository.com/artifact/org.springframework.boot/spring-boot/2.5.2)を例に出します。Mavenだと次の書き方になります。
   
-なお、作成後にアカウントの言語と地域を変更してもスプレッドシート側には反映されません。（スプレッドシートが見ている人によって違うものが表示される、ということはありません。）
+```XML
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot</artifactId>
+    <version>2.5.2</version>
+</dependency>
+```
   
-アカウントの言語設定を変更する
-- [https://myaccount.google.com/language?pli=1]
+これをコピーして、build.gradleにペーストするとGradle用に自動変換されます。
+  
+```groovy
+implementation 'org.springframework.boot:spring-boot:2.5.2' 
+```
+  
+scopeをtestに変更すると、Gradle側も```testImplementation```になります。
+  
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot</artifactId>
+    <version>2.5.2</version>
+    <scope>test</scope>
+</dependency>
+```
+  
+```groovy
+testImplementation 'org.springframework.boot:spring-boot:2.5.2'
+```
+  
+なお、```groupId```、```artifactId```、```version```が全て揃っていることが条件のようです。```version```が存在しない場合は、XMLのままペーストされました。
+  
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot</artifactId>
+</dependency>
+```
+  
+```groovy
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot</artifactId>
+</dependency>
+```
 
-# スプレッドシートの言語と地域を変更して通貨・日付・番号フォーマットを変更する
+# 備考
 
-「ファイル」 > 「Google スプレッドシートの設定」をクリックします。
+MavenからGradleへの変換が用意されていたので、逆にGradleからMavenに変換してくれるかと思いましたが、それはありませんでした。
   
-ToDo：301。
-  
-言語と地域を変更する。
-  
-ToDo：302。
-  
----
-  
-完了後には、変更後のフォーマットが目的通りであることは確認しましょう。また、日付以外にも通貨が＄に変更される可能性もありますので、一通りは確認したほうが良いと思います。
-
-# セルごとに通貨・日付・番号フォーマットを変更する
-
-フォーマットを変更したいセルを選択している状態で、「表示形式」 > 「数字」 > 「表示形式の詳細設定」 > 「その他の日付や時刻の形式」をクリックします。
-  
-ToDo：303。
-  
-好きなフォーマットを選んでください。自作することも可能ですが、基本的に日付フォーマットで欲しい形式は用意されていると思います。
-  
-ToDo:304。
-ToDo：305。
-  
-一部のセルだけが影響することがこちらでわかります。
-  
-ToDo：306。
+MavenからGradleへの一方通行のようですね。
   
 # 終わりに
+
+超地味なネタですが、見つけたのでブログネタにしました。実はEclipseもそういうことやってくれるんですかね…。
   
-現在日付はショートカットで入力できることもあり、日付は使う機会が多いです。「日付」というキーワードで探したのに、「数値」のページが引っかかるのでちょっと混乱しました。
-  
-グローバルな会社だったり、スプレッドシート作成者がオフショアで海外の人だった、ということが無い限りはこの記事にたどり着くことは無いかもしれませんが、実際に困りましたのでブログにしました。
+あまり積極的に使うような機能ではありませんが、一々```groupId```と```artifactId```と```version```をそれぞれ別にコピペして文字列結合していた人にとっては朗報だと思います。
   
 ---
 
@@ -70,13 +75,4 @@ ToDo：306。
 
 - [技術ブログはこちら](https://nainaistar.hatenablog.com)
 - [雑記ブログはこちら](https://nainaistar.hateblo.jp)
-  
-# 参考
-- アカウントの言語設定を変更する
-  - [https://myaccount.google.com/language?pli=1]
 
-- スプレッドシートの地域と計算の設定を変更する
-  - [https://support.google.com/docs/answer/58515?co=GENIE.Platform%3DDesktop&hl=ja#zippy=%2C%E8%A8%80%E8%AA%9E%E3%81%A8%E5%9C%B0%E5%9F%9F%E3%82%BF%E3%82%A4%E3%83%A0%E3%82%BE%E3%83%BC%E3%83%B3%E3%82%92%E5%A4%89%E6%9B%B4%E3%81%99%E3%82%8B]
-
-- スプレッドシートで数値の表示形式を設定する
-  - [https://support.google.com/docs/answer/56470?co=GENIE.Platform%3DDesktop&hl=ja]
