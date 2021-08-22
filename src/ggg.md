@@ -76,3 +76,5 @@ MavenからGradleへの一方通行のようですね。
 - [技術ブログはこちら](https://nainaistar.hatenablog.com)
 - [雑記ブログはこちら](https://nainaistar.hateblo.jp)
 
+- https://qiita.com/yoshida-hi/items/055c36e015f0bf8fe4f6
+
