@@ -1,74 +1,85 @@
-# IntelliJ IDEAでmavenの依存関係をbuild.gradleにコピペするとGradle用に自動変換される
+# CSSで文字の上に強調のドットを付与したい
 
-超小ネタ。Mavenでライブラリが書いてあるから、それをGradle用に書き直したいとコピペしていた時に気づきました。
+CSSで文字の上に強調のドットを付与したかったので、それを設定した時のメモ。
   
-なお、IntelliJ IDEAでこの機能名を探したのですが、見つかりませんでした。
+# ゴール
+
+- 特定の文字の上にのみドットを付与して強調する
   
+ToDo: 画像901。
+
 # 環境
-- Intellij IDEA Ultimate
-    - 2021.1.2
+- Windows
+  - Chrome
+- iPhone
+  - Chrome
+# 対応
 
-# 機能
+次のCSSを設定すると、文字の上にドットを付与できます。
+  
+```css
+padding-top: .7em; // 文字とドットの距離
+background-position: top left -2px; // ドットの位置微調整
+background-repeat: repeat-x; // ドットをどの方向に設定するか
+background-size: 1em 1em; // 繰り返す頻度
+background-image: radial-gradient(orange 20%, transparent 30%); // ドットの大きさと色
+```
+  
+なお、ドットを繰り返す回数を指定することはできないようです。親の要素に```display: flex```を指定することで、必要な大きさのブロック要素になりますので、特定の文字の上にのみドットを表示できます。
+  
+また、ドットがある分、ドットがない文字との高さの位置が合わなくなるので、```align-items: flex-end;```を指定するとよいです。
+  
+---
 
-[Spring Boot](https://mvnrepository.com/artifact/org.springframework.boot/spring-boot/2.5.2)を例に出します。Mavenだと次の書き方になります。
+ドットの大きさを％ではなく、文字の大きさで設定できそうでしたが…。
   
-```XML
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot</artifactId>
-    <version>2.5.2</version>
-</dependency>
+```css
+background-image: radial-gradient(.15em .15em at center center, orange, orange 100%, transparent);
 ```
   
-これをコピーして、build.gradleにペーストするとGradle用に自動変換されます。
+なぜか、iPhoneの実機で確認すると、文字のドットが棒になってしまいました。原因は不明ですが、文字のサイズでは指定はしない方がよいでしょう。
   
-```groovy
-implementation 'org.springframework.boot:spring-boot:2.5.2' 
+PC: 
+
+ToDo:901。
+
+iPhone：902。
+# ソースコード
+
+```html
+<div class="flex">
+  <div class="">
+    ライオン
+  </div>
+  <div class="dot">
+    いません
+  </div>
+</div>
 ```
   
-scopeをtestに変更すると、Gradle側も```testImplementation```になります。
-  
-```xml
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot</artifactId>
-    <version>2.5.2</version>
-    <scope>test</scope>
-</dependency>
-```
-  
-```groovy
-testImplementation 'org.springframework.boot:spring-boot:2.5.2'
-```
-  
-なお、```groupId```、```artifactId```、```version```が全て揃っていることが条件のようです。```version```が存在しない場合は、XMLのままペーストされました。
-  
-```xml
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot</artifactId>
-</dependency>
-```
-  
-```groovy
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot</artifactId>
-</dependency>
+```css
+.flex{
+  display: flex;
+  align-items: flex-end;
+}
+
+.dot {
+  padding-top: .7em;
+  background-position: top left -2px;
+  background-repeat: repeat-x;
+  background-size: 1em 1em;
+  background-image: radial-gradient(orange 20%, transparent 30%);
+}
 ```
 
-# 備考
+- [CodePen](https://codepen.io/nainaistar/pen/rNwMMXe)
 
-MavenからGradleへの変換が用意されていたので、逆にGradleからMavenに変換してくれるかと思いましたが、それはありませんでした。
-  
-MavenからGradleへの一方通行のようですね。
-  
 # 終わりに
 
-超地味なネタですが、見つけたのでブログネタにしました。実はEclipseもそういうことやってくれるんですかね…。
+指摘されるまでドットの挙動がChromeとiPhoneで異なることに気付いていませんでした。Safariが原因かと思ったのですが…。
   
-あまり積極的に使うような機能ではありませんが、一々```groupId```と```artifactId```と```version```をそれぞれ別にコピペして文字列結合していた人にとっては朗報だと思います。
-  
+こういう、機種依存の問題まで含めると、本当にCSSは沼ですね…。
+
 ---
 
 この記事がお役に立ちましたら、各種SNSでのシェアや、今後も情報発信しますので[フォロー](https://twitter.com/nainaistar)よろしくお願いします。
@@ -76,5 +87,9 @@ MavenからGradleへの一方通行のようですね。
 - [技術ブログはこちら](https://nainaistar.hatenablog.com)
 - [雑記ブログはこちら](https://nainaistar.hateblo.jp)
 
-- https://qiita.com/yoshida-hi/items/055c36e015f0bf8fe4f6
+# 参考情報
+
+- [https://www.webopixel.net/html-css/1494.html:title]
+- [https://www.esz.co.jp/blog/2766.html:title]
+- [https://developer.mozilla.org/ja/docs/Web/CSS/background-repeat:title]
 
