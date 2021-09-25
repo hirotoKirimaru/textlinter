@@ -1,84 +1,116 @@
-# CSSで文字の上に強調のドットを付与したい
+# ピュアなJavaScript（ECMAScript）でQRコードを生成する（qrcodejs）
 
-CSSで文字の上に強調のドットを付与したかったので、それを設定した時のメモ。
-  
+仕事で必要になったので、QRコード生成ライブラリのqrcodejsを素振りします。
+
+Star数が10.5Kと調べたQRコード生成ライブラリの中でも多かったです。懸念点は2015年に更新が止まっていることですね。
 # ゴール
 
-- 特定の文字の上にのみドットを付与して強調する
-  
-ToDo: 画像901。
+QRコード生成ライブラリのqrcodejsを素振りする。
+
 
 # 環境
 - Windows
   - Chrome
-- iPhone
-  - Chrome
-# 対応
+- JavaScript
+- qrcodejs
 
-次のCSSを設定すると、文字の上にドットを付与できます。
+# 使い方
+
+[公式のREADME.md](https://github.com/davidshimjs/qrcodejs)に載っているとおりです。
   
-```css
-padding-top: .7em; // 文字とドットの距離
-background-position: top left -2px; // ドットの位置微調整
-background-repeat: repeat-x; // ドットをどの方向に設定するか
-background-size: 1em 1em; // 繰り返す頻度
-background-image: radial-gradient(orange 20%, transparent 30%); // ドットの大きさと色
+指定したDOMに対してQRコードを上書きします。
+  
+注意点は、基本的なことですが次のとおりです。
+  
+1. qrcode.min.jsを同一ディレクトリに配備する
+1. scriptの読み込むタイミングを最後（後ろの行）にする
+  1. DOMを先に読み込むことができない為
+  
+  
+```html
+<div id="qrcode"></div>
+
+<script type="text/javascript" src="qrcode.min.js"></script>
+<script type="text/javascript">
+var qrcode = new QRCode(document.getElementById("qrcode"), {
+	text: "https://github.com/hirotoKirimaru",
+	width: 128,
+	height: 128,
+	colorDark : "#ffffff",
+	colorLight : "#000000",
+	correctLevel : QRCode.CorrectLevel.H
+});
+</script>
 ```
   
-なお、ドットを繰り返す回数を指定することはできないようです。親の要素に```display: flex```を指定することで、必要な大きさのブロック要素になりますので、特定の文字の上にのみドットを表示できます。
-  
-また、ドットがある分、ドットがない文字との高さの位置が合わなくなるので、```align-items: flex-end;```を指定するとよいです。
-  
----
+# 各パラメータの説明
+## text 
 
-ドットの大きさを％ではなく、文字の大きさで設定できそうでしたが…。
+URLのこと。
+
+## width & height
+
+横幅と縦幅のこと。初期値はどちらも256。
+
+## colorDark & colorLight
+
+colorDarkがQRコードを描画する色、colorLightがQRコードを描画する背景色です。
   
-```css
-background-image: radial-gradient(.15em .15em at center center, orange, orange 100%, transparent);
+初期値はcolorDarkが```#ffffff```、colorLightが```#000000```です。
+
+
+## correctLevel
+
+正直よく分かりません。README等にも記載はありませんでした。「L:1,M:0,Q:3,H:2」の4種類があるそうです。
+  
+数字は特に深い意味を持っていないようで、順番が右になるにつれてQRコードが細かい模様になります。
+  
+ToDo:905。
+
+# 各メソッドの説明
+## clear
+
+挙動不明。QRコードが消えると思ったら、特に動きはないようです。
+
+```js
+qrcode.clear();
 ```
-  
-なぜか、iPhoneの実機で確認すると、文字のドットが棒になってしまいました。原因は不明ですが、文字のサイズでは指定はしない方がよいでしょう。
-  
-PC: 
 
-ToDo:901。
+## makeCode
 
-iPhone：902。
+描画した後にQRコードのURLを書き換えます。URLが変わるので、QRコードも書き換わります。
+  
+```js
+qrcode.makeCode("新しいURL");
+```
+
+# 備考
+
+依存関係がないので、```qrcode.min.js```だけ読み込めば動きます。
+  
+しかし、GitHubにアップロードされているminifyされたコードにはライセンスが記載されていません。ですので、ライセンスを追記する必要があります（この追記方法でよいかは不明です）
+  
+- [https://github.com/davidshimjs/qrcodejs/blob/master/qrcode.min.js]
+
+他のライセンスを回避する方法もあります。Source Mapを使用するとSource Mapから元のライセンスファイルを確認できるため、minifyされたコードに直接ライセンスを追記する必要はないようです。
+  
+- [https://tofucodes.hatenablog.jp/entry/2014/04/16/000000:title]
+
 # ソースコード
 
-```html
-<div class="flex">
-  <div class="">
-    ライオン
-  </div>
-  <div class="dot">
-    いません
-  </div>
-</div>
-```
+GitHub Pagesで公開しているので、ブラウザで挙動確認できます。
+
+- [https://hirotokirimaru.github.io/javascript-practice/QR/:title]
   
-```css
-.flex{
-  display: flex;
-  align-items: flex-end;
-}
+公開しているソースコード。
 
-.dot {
-  padding-top: .7em;
-  background-position: top left -2px;
-  background-repeat: repeat-x;
-  background-size: 1em 1em;
-  background-image: radial-gradient(orange 20%, transparent 30%);
-}
-```
-
-- [CodePen](https://codepen.io/nainaistar/pen/rNwMMXe)
+- [https://github.com/hirotoKirimaru/javascript-practice/blob/main/QR/index.html:title]
 
 # 終わりに
 
-指摘されるまでドットの挙動がChromeとiPhoneで異なることに気付いていませんでした。Safariが原因かと思ったのですが…。
+QRコードを表示するのは簡単に終わりました。ただ、各パラメータの意味が分からなかったので、そちらを調査することに時間がかかってしまいました。
   
-こういう、機種依存の問題まで含めると、本当にCSSは沼ですね…。
+また、minifyされたソースコードにライセンスが入っておらず、その対応の調べ方にも時間かかってしまいました。相談に乗っていただいた[Yoichiro Shimizu](https://twitter.com/budougumi0617)さんには感謝です。
 
 ---
 
@@ -89,7 +121,6 @@ iPhone：902。
 
 # 参考情報
 
-- [https://www.webopixel.net/html-css/1494.html:title]
-- [https://www.esz.co.jp/blog/2766.html:title]
-- [https://developer.mozilla.org/ja/docs/Web/CSS/background-repeat:title]
+- [https://github.com/davidshimjs/qrcodejs:title]
+- [https://tofucodes.hatenablog.jp/entry/2014/04/16/000000:title]
 
