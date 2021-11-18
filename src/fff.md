@@ -1,118 +1,87 @@
-# TypeScriptでPythonのキーワード引数みたいな挙動をさせる（ROROパターン）
+# Google スプレッドシートでフィルタした結果を元に操作する（SUBTOTALとFILTER）
 
-TypeScriptを書いていて、Pythonでいうキーワード引数（名前付き引数）のような挙動をしたいとTwitterに呟いたところ、[【公式】皮しばき](https://twitter.com/r315dr)さん、[suin](https://twitter.com/suin)さんに反応していただけました。
+Google スプレッドシートで管理していた障害管理表を元に、フィルタ機能で自分が担当した障害をフィルタしていました。そのまま原因分析をしようとしたところ、自分の担当した件数以上にデータを取得してしまいました。
   
-その中でsuinさんに教えていただいたデザインパターンのROROパターン（Receive an object, return an object）が自分の期待した動きをしたので、ブログにまとめます。
-  
-[https://twitter.com/suin/status/1440468357845712901?s=20:embed:cite]
-  
-なお、今回の記事はsuinさんに紹介していただいたmediumの記事をローカルで検証した結果ですので、より詳細なメリットは原文を読んだ方が理解できます。
+画面のフィルタを活かす。またはフィルタと同等の機能を使えるようにするのが、この記事の目的です。
+
 
 # 環境
-- TypeScript
-  - 不明
-  - PlayWrightのv1.15.0ごしにTypeScriptを検証していました
+- Google スプレッドシート
 
-# ゴール
+# 仕様
 
-- TypeScriptでもPythonのキーワード引数（名前付き引数）に似た挙動をさせる
-
-# そもそも、キーワード引数とは
-
-Pythonにはキーワード引数という機能があります。この機能はメソッド呼び出しでパラメータ前に識別できるパラメータ名を一緒に渡すことで、順番に依存せず、メソッドにパラメータを渡せる機能です。
+2021年10月1日から2021年10月31日までの東京の平均気温が載っているCSVを元にする。土日の平均気温を調べたい。
   
-```python
-# メソッドの定義
-def send_mail(mail_from='example@co.jp', mail_to='example@co.jp', text='テストメール', name='運営'):
+---
 
-# メソッドの呼び出し
-send_mail(mail_to='hogehoge@co.jp')
-# mail_fromは「exmaple@co.jp」 
-# mail_toは「hogehoge@co.jp」
-# textは「テストメール」
-# nameは「運営」
-# のパラメータで渡される
+次の画像はゴールを指定しています。画像では曜日のB列で「値でフィルタ」をして「土」・「日」をフィルタした結果を表示しているため、土日しか表示されていませんが、平日のデータも存在します。土日の平均気温は18.07℃、10月平均気温は18.17℃です。18.07℃を求められることがゴールです。
+  
+ToDo：301。
+
+# フィルタした結果を元に計算したい
+
+```SUBTOTAL```関数を使用することで、**画面上で**フィルタしている状態の平均や合計を簡単に計算できます。
+  
+第一引数を変更することで、最小値、最大値等を求めることもできます。
+
+```bash
+# 平均を求めるには1を第一引数とする。
+# 第二引数には範囲を指定します。
+=SUBTOTAL(1,$C$4:$C$34)
 ```  
+
+ToDo：301。
   
-メリットとしては、いくつかあります。
-
-- 必要な箇所にのみパラメータを渡すことができる
-- パラメータを増やしても呼び出し元に一切影響を与えない
-- Javaでいうオーバーロードせずに表現できる
-  - シンプルに表現できる
-
-なお、順番で識別されるパラメータのことをPythonでは位置引数と呼びます。
-
-# ROROパターン（Receive an object, return an object）とは
-
-メソッド呼び出し時に```object```でパラメータを渡し、返却値も```object```で返却するデザインパターンです。なお、今回私が感銘を受けたのはメソッド呼び出し時の挙動ですので、返却値の話はしません。
+```SUBTOTAL```関数の詳細は[公式ページ](https://support.google.com/docs/answer/3093649?hl=ja)を参照してください。
   
-```typescript
-// 既存の呼び出し
-send_mail('example@co.jp', 'example@co.jp', 'テストメール', '運営');
-// ROROパターンの呼び出し
-send_mail({ mail_from='example@co.jp', mail_to='example@co.jp', text='テストメール', name='運営'});
-```
+- 1 - AVERAGE
+- 2 - COUNT
+- 3 - COUNTA
+- 4 - MAX
+- 5 - MIN
+- 6 - PRODUCT
+- 7 - STDEV
+- 8 - STDEVP
+- 9 - SUM
+- 10 - VAR
+- 11 - VARP
 
-```typescript
-// 既存の呼び出し元
-function send_mail(mail_from, mail_to, text, name) {}
-// ROROパターンの呼び出し元
-function send_mail({ mail_from, mail_to, text, name }) {}
-```
+また、1桁のコードの先頭に10を追加するか、2桁のコードの先頭に1を追加すると非表示の値を無視できるそうです。```101```であれば非表示の値を無視したうえで```AVERAGE```, ```110```であれば非表示の値を無視したうえで```VAR```の関数で処理します。
 
-# 必須チェックと不要な変数チェック
+# フィルタした結果を元に処理したい
 
-現状のままでは、キーワード引数のメリットを享受できません。型を用意しましょう。今回はメール送信者の名前である```name```を非必須とします。
+集合関数（AVERAGE、SUM、MAX等々）を使用したい場合は```SUBTOTAL```関数を使用すれば、**画面上**でフィルタした結果を使用できます。
+
+それ以外の操作をしたい場合、```FILTER```関数を使用するとフィルタした結果を元に処理できます。ただし、```FILTER```関数では**画面上**でフィルタした結果を使用することはできません。画面上で使用しているフィルタと同等の条件を```FILTER```関数ですべて指定する必要があります。
   
-```typescript
-// メソッドの型
-type EMailType = {
-  mail_from: string; // メール送信元
-  mail_to: string; // メール送信先
-  text: string; // 本文
-  name?: string; // メール送信者の名前
-};
-// 型を付与する
-function send_mail({ mail_from, mail_to, text }: EMailType) {}
+```FILTER```関数の第一引数に、フィルタする前の範囲を指定します。第二引数以降にフィルタする条件を指定します。第二引数、第三引数以降はそれぞれの条件をANDで結合してフィルタします。もしOR条件でフィルタしたい場合は、条件を```+```で結合するとOR条件でフィルタできます。
+  
+```bash
+# AND条件でフィルタしたい場合、第二引数以降にパラメータを指定する
+=FILTER(範囲, A条件, B条件)
+
+# OR条件でフィルタしたい場合、+で結合します
+=FILTER(範囲, (A条件)+(B条件))
 ```
   
-この状態で必須項目が足りない、または定義していない変数名を指定した場合、エラーを出力してくれるので間違いに気付きやすくなります。
+また、列数は一致している必要はありませんが、行数は一致している必要がありますので注意してください。
+  
+今回のユースケースの場合、B列が「土」・「日」のレコードのC列の平均気温を取得したいので、```FILTER```関数でフィルタした後に集合関数の```AVERAGE```を設定しています。
     
-ToDo: 201。
+```bash
+=AVERAGE(FILTER($B$4:$C$34, ($B$4:$B$34="土")+($B$4:$B$34="日")))
+```  
 
-# 初期値の設定
-
-非必須項目に初期値を与えられます。
-  
-```typescript
-function send_mail({ 
-  mail_from, 
-  mail_to, 
-  text, 
-  name = '公式'
-}) {}
-```
-
-```typescript
-// メソッドの呼び出し
-send_mail({ mail_from: "a", mail_to: "b", text: "c" });
-// nameには初期値の「公式」
-
-send_mail({ mail_from: "a", mail_to: "b", text: "c", name: "d" });
-// nameにはパラメータで渡した「d」
-```
-# ソースコード
-  
-- [https://codesandbox.io/s/roro-patterncheck-umeq2]
-
+ToDo：301。
 # 終わりに
+  
+フィルタした結果を別シートにコピー&ペーストして、必要なレコードを抽出してもよかったのですが、毎回この手作業やりたくなかったので方法を知ることができてよかったです。
+  
+今後も```SUBTOTAL```、 ```FILTER```関数を使って、余計な条件を省いた結果を容易に分析したいです。
 
-```object```でメソッドに渡して、メソッドで```object```を展開できるとは知りませんでした。
-  
-Mediumの記事では今回紹介しなかったROROパターンでのメリット・デメリットが紹介されています。今回、私の記事で紹介していないのは、ユースケースが分からなかったものと、再現ができなかったからです。
-  
-私の希望するPythonのキーワード引数みたいな挙動をTypeScriptでもできる、という最低条件は確認しましたので、ブログに残しました。
+---
+
+…まぁ、本格的に分析したければ、SpreadSheetではなくBIツールを使った方がいいとは理解しています。とりあえず、さくっと確認したいときには使える関数です。
 
 ---
 
@@ -123,7 +92,7 @@ Mediumの記事では今回紹介しなかったROROパターンでのメリッ�
 
 # 参考情報
 
-- [https://docs.python.org/ja/3.10/glossary.html]
-  - argumentにキーワード引数、位置引数の説明
-- [https://medium.com/free-code-camp/elegant-patterns-in-modern-javascript-roro-be01e7669cbd:title]
-- [https://twitter.com/suin/status/1440468357845712901:title]
+- 平均気温の取得元
+    - [https://www.data.jma.go.jp/gmd/risk/obsdl/#:title]
+- [https://support.google.com/docs/answer/3093649?hl=ja:title]
+- [https://www.benlcollins.com/formula-examples/advanced-filter/:title]
