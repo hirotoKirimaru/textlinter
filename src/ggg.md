@@ -1,126 +1,77 @@
-# ピュアなJavaScript（ECMAScript）でQRコードを生成する（qrcodejs）
+# Rubyで複数行文字列を使う
 
-仕事で必要になったので、QRコード生成ライブラリのqrcodejsを素振りします。
-
-Star数が10.5Kと調べたQRコード生成ライブラリの中でも多かったです。懸念点は2015年に更新が止まっていることですね。
-# ゴール
-
-QRコード生成ライブラリのqrcodejsを素振りする。
-
+小ネタ。
+  
+Rubyで複数行文字列（マルチラインテキスト）を定義できる方法は調べればできるものの、複数のやり方が見つかったので違いを残すための記事です。
 
 # 環境
-- Windows
-  - Chrome
-- JavaScript
-- qrcodejs
+- Ruby
+    - 3.0.2p107
+- Rails
+    - 6.0.3.7
+- RSpec
 
-# 使い方
+# 要約
 
-[公式のREADME.md](https://github.com/davidshimjs/qrcodejs)に載っているとおりです。
+複数行文字列を定義したければ、```<<~EOS EOS```を使用しましょう。
   
-指定したDOMに対してQRコードを上書きします。
-  
-注意点は、基本的なことですが次のとおりです。
-  
-1. qrcode.min.jsを同一ディレクトリに配備する
-1. scriptの読み込むタイミングを最後（後ろの行）にする
-  1. DOMを先に読み込むことができない為
-  
-  
-```html
-<div id="qrcode"></div>
-
-<script type="text/javascript" src="qrcode.min.js"></script>
-<script type="text/javascript">
-var qrcode = new QRCode(document.getElementById("qrcode"), {
-	text: "https://github.com/hirotoKirimaru",
-	width: 128,
-	height: 128,
-	colorDark : "#ffffff",
-	colorLight : "#000000",
-	correctLevel : QRCode.CorrectLevel.H
-});
-</script>
-```
-  
-# 各パラメータの説明
-## text 
-
-URLのこと。
-
-## width & height
-
-横幅と縦幅のこと。初期値はどちらも256。
-
-## colorDark & colorLight
-
-colorDarkがQRコードを描画する色、colorLightがQRコードを描画する背景色です。
-  
-初期値はcolorDarkが```#ffffff```、colorLightが```#000000```です。
-
-
-## correctLevel
-
-正直よく分かりません。README等にも記載はありませんでした。「L:1,M:0,Q:3,H:2」の4種類があるそうです。
-  
-数字は特に深い意味を持っていないようで、順番が右になるにつれてQRコードが細かい模様になります。
-  
-ToDo:905。
-
-# 各メソッドの説明
-## clear
-
-挙動不明。QRコードが消えると思ったら、特に動きはないようです。
-
-```js
-qrcode.clear();
+```rb
+<<~EOS
+  aiueo xyz 
+  12345
+EOS
 ```
 
-## makeCode
+# 検証
 
-描画した後にQRコードのURLを書き換えます。URLが変わるので、QRコードも書き換わります。
+Rubyでは複数行文字列は```%| |```（```%{ }```）と、```<<~EOS EOS```を使用して定義する方法がありました。
+    
+```%| |```で定義した場合、厳密に```%| |```の内部の文字列を取得します。改行コードやインデントも厳密に取得します。
   
-```js
-qrcode.makeCode("新しいURL");
+```<<~EOS EOS```で定義した場合、```<<~EOS EOS```内部で定義した最初に出現する文字から取得し、その文字列に合わせたインデントで後続の文字列も取得します。
+  
+具体的にはコードを見てもらうと分かりますが、次のコードが等価となります。
+  
+```rb
+    actual =
+      %|aiueo xyz
+12345
+|
+
+    expected = <<~EOS
+      aiueo xyz
+      12345
+    EOS
+
+    expect(actual).to eq expected
+    # "aiueo xyz\n12345\n"
 ```
 
-# 備考
+```%| | ```を```<<~EOS EOS```と似たような感じで定義したときの文字列に違いが出てくるので、分かりやすいです。
 
-依存関係がないので、```qrcode.min.js```だけ読み込めば動きます。
-  
-しかし、GitHubにアップロードされているminifyされたコードにはライセンスが記載されていません。ですので、ライセンスを追記する必要があります（この追記方法でよいかは不明です）
-  
-- [https://github.com/davidshimjs/qrcodejs/blob/master/qrcode.min.js]
+```rb
+    actual = %|
+      aiueo xyz
+      12345
+    |
 
-他のライセンスを回避する方法もあります。Source Mapを使用するとSource Mapから元のライセンスファイルを確認できるため、minifyされたコードに直接ライセンスを追記する必要はないようです。
-  
-- [https://tofucodes.hatenablog.jp/entry/2014/04/16/000000:title]
+    expected = <<~EOS
+      aiueo xyz
+      12345
+    EOS
+
+    expect(actual).not_to eq expected
+    # "\n      aiueo xyz\n      12345\n    "
+    # "aiueo xyz\n12345\n"
+```  
 
 # ソースコード
 
-GitHub Pagesで公開しているので、ブラウザで挙動確認できます。
+- [https://github.com/hirotoKirimaru/ror-practice/blob/99a500b794376483b6d3d4ebad306f2b36ff86a9/sandbox/spec/models/multiline_text_spec.rb:title]
 
-- [https://hirotokirimaru.github.io/javascript-practice/QR/:title]
-  
-公開しているソースコード。
-
-- [https://github.com/hirotoKirimaru/javascript-practice/blob/main/QR/index.html:title]
 
 # 終わりに
 
-QRコードを表示するのは簡単に終わりました。ただ、各パラメータの意味が分からなかったので、そちらを調査することに時間がかかってしまいました。
+コードリーディングしている際に、```%| |```で定義している複数行文字列を見かけて気になって検証してみました。正直、```String#%```にブロック文を渡しているんだと思いますが、普通に調べても全く出てきませんでした。
   
-また、minifyされたソースコードにライセンスが入っておらず、その対応の調べ方にも時間かかってしまいました。相談に乗っていただいた[Yoichiro Shimizu](https://twitter.com/budougumi0617)さんには感謝です。
-
----
-
-この記事がお役に立ちましたら、各種SNSでのシェアや、今後も情報発信しますので[フォロー](https://twitter.com/nainaistar)よろしくお願いします。
-
-- [技術ブログはこちら](https://nainaistar.hatenablog.com)
-- [雑記ブログはこちら](https://nainaistar.hateblo.jp)
-
-# 参考情報
-
-- [https://github.com/davidshimjs/qrcodejs:title]
-- [https://tofucodes.hatenablog.jp/entry/2014/04/16/000000:title]
-
+なお、調べたうえで普通に```<<~EOS EOS```使った方がいいということが分かったので、それも含めて収穫です。
