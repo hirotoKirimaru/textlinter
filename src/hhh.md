@@ -1,29 +1,24 @@
-# 実質Amazonでpaypay使えないじゃないの
 
-2022年5月10日。AmazonでPayPayが使えるようになりました（[プレスリリース](https://about.paypay.ne.jp/pr/20220510/01/)）
-  
-ですが、実質自分のユースケースでは使えなかったので、メモとして残しておきます。
-  
-# 理由
+これをもとに
 
-Amazonで使用できるPayPayは[公式より](https://paypay.ne.jp/guide/amazon/)次の2種類です。
+https://github.com/MindShow/USBDisplay/issues/17
 
-- PayPayマネー
-    - 銀行口座/ヤフオク!・PayPayフリマの売上金/現金（セブン銀行ATM・ローソン銀行ATMの利用）
-- PayPayポイント
-    - 特典やキャンペーンによる付与のためチャージはできません。
+これをダウンロード
+
+https://support.frescologic.com/portal/en/kb/articles/usb-3-0-v
+
+効かなかったので削除
 
 
-この中には、**PayPayマネーライト**が含まれていません。PayPayマネーライトの定義は次の記載します。
-
-- PayPayカード（旧Yahoo! JAPANカード含む）や、PayPayあと払い、ソフトバンク・ワイモバイルまとめて支払いを利用してPayPay残高にチャージした残高です。
-  
-PayPayのメイン層はソフトバンク経済圏に関わっている人だと考えています。私がそうです。PayPayのチャージをソフトバンク・ワイモバイルまとめて支払いを利用することで、クレジットカードのポイントを取得しつつ、PayPayで使用するときのポイントを取得する2重取りを狙っていました。
-  
-しかし、**PayPayマネーライト**はAmazonでは使用できません。PayPayを有効に使いたければ、素直にソフトバンク経済圏のYahoo!ショッピングで**PayPayマネーライト**を使用するのが良さそうですね。
-  
-現金でPayPayにチャージして**PayPayマネー**でAmazonでも購入できますが、Amazonはギフト券を現金で購入すると最大2.5%のポイントが付与されるので、素直にギフト券を購入すべきだと考えています。
-  
-普通、少しずつ改悪されていくものですが、2022年5月10日にリリースされて、2022年6月4日時点で使えていないということは、改善も難しそうですね。私は何かしらのキャンペーンが無い限りはAmazonでPayPayは使いません。
+こ子にいるのでuninstall
+C:\Program Files\MS USB Display
 
 
+
+USMDisplay_Windows 3.0.1.40
+
+https://github.com/MindShow/USBDisplay/issues/66
+
+
+皆遅いって言ってる
+https://github.com/MindShow/USBDisplay/issues/80
